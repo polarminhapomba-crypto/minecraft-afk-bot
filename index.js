@@ -1,11 +1,11 @@
-const mineflayer = require('mineflayer');
+const bedrock = require('bedrock-protocol');
 
 const HOST = process.env.MC_HOST || '144.31.46.4';
 const PORT = parseInt(process.env.MC_PORT || '10167');
 const USERNAME = process.env.MC_USERNAME || 'geforce';
-const RECONNECT_DELAY = parseInt(process.env.RECONNECT_DELAY || '30000'); // 30 segundos
+const RECONNECT_DELAY = parseInt(process.env.RECONNECT_DELAY || '30000');
 
-let bot = null;
+let client = null;
 let reconnectTimer = null;
 
 function log(msg) {
@@ -19,86 +19,68 @@ function createBot() {
     reconnectTimer = null;
   }
 
-  log(`Conectando ao servidor ${HOST}:${PORT} como "${USERNAME}"...`);
+  log(`Conectando ao servidor BEDROCK ${HOST}:${PORT} como "${USERNAME}"...`);
 
   try {
-    bot = mineflayer.createBot({
+    client = bedrock.createClient({
       host: HOST,
       port: PORT,
       username: USERNAME,
-      version: false, // detecta automaticamente a versão
-      hideErrors: false,
-      checkTimeoutInterval: 60000,
-      connectTimeout: 30000,
+      offline: true // Servidores Bedrock geralmente aceitam conexões offline/locais
     });
 
-    bot.on('login', () => {
-      log(`✅ Bot conectado com sucesso! Jogador: ${bot.username}`);
+    client.on('join', () => {
+      log(`✅ Bot entrou no servidor Bedrock com sucesso!`);
     });
 
-    bot.on('spawn', () => {
-      log('🌍 Bot entrou no mundo. Modo AFK ativado.');
-      startAFK();
+    client.on('spawn', () => {
+      log('🌍 Bot deu spawn no mundo.');
     });
 
-    bot.on('kicked', (reason) => {
-      log(`⚠️  Bot foi kickado: ${reason}`);
-      scheduleReconnect();
-    });
-
-    bot.on('error', (err) => {
+    client.on('error', (err) => {
       log(`❌ Erro de conexão: ${err.message}`);
       scheduleReconnect();
     });
 
-    bot.on('end', (reason) => {
-      log(`🔌 Conexão encerrada: ${reason || 'sem motivo'}`);
+    client.on('close', () => {
+      log(`🔌 Conexão encerrada.`);
       scheduleReconnect();
     });
 
-    bot.on('death', () => {
-      log('💀 Bot morreu. Tentando respawnar...');
-      bot.respawn();
+    client.on('kick', (reason) => {
+      log(`⚠️ Bot foi kickado: ${reason}`);
+      scheduleReconnect();
     });
 
-    bot.on('chat', (username, message) => {
-      if (username === bot.username) return;
-      log(`💬 [Chat] ${username}: ${message}`);
-    });
+    // Manter a conexão ativa enviando pacotes de movimento simples se necessário
+    setInterval(() => {
+        if (client && client.status === 'active') {
+            // Bedrock protocol handles keep-alive automatically, 
+            // but we can log status here if needed
+        }
+    }, 60000);
 
   } catch (err) {
-    log(`❌ Falha ao criar bot: ${err.message}`);
+    log(`❌ Falha ao criar cliente Bedrock: ${err.message}`);
     scheduleReconnect();
   }
 }
 
-function startAFK() {
-  // Movimento leve para evitar kick por inatividade (olha para os lados)
-  setInterval(() => {
-    if (bot && bot.entity) {
-      const yaw = bot.entity.yaw + 0.01;
-      bot.look(yaw, bot.entity.pitch, false);
-    }
-  }, 10000);
-}
-
 function scheduleReconnect() {
-  if (reconnectTimer) return; // já agendado
+  if (reconnectTimer) return;
 
   log(`🔄 Tentando reconectar em ${RECONNECT_DELAY / 1000} segundos...`);
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
-    if (bot) {
-      try { bot.end(); } catch (_) {}
-      bot = null;
+    if (client) {
+      try { client.close(); } catch (_) {}
+      client = null;
     }
     createBot();
   }, RECONNECT_DELAY);
 }
 
-// Iniciar o bot
-log('🚀 Iniciando bot AFK Minecraft...');
+log('🚀 Iniciando bot AFK Minecraft BEDROCK...');
 log(`   Servidor : ${HOST}:${PORT}`);
 log(`   Username : ${USERNAME}`);
-log(`   Reconexão: a cada ${RECONNECT_DELAY / 1000}s quando offline`);
 createBot();
