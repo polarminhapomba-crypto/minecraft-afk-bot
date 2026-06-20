@@ -6,6 +6,9 @@
   "scripts": {
     "start": "node index.js"
   },
+  "engines": {
+    "node": "20.x"
+  },
   "dependencies": {
     "mineflayer": "^4.23.0",
     "bedrock-protocol": "^3.57.0"
