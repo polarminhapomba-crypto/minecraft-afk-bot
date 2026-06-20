@@ -8,6 +8,6 @@
   },
   "dependencies": {
     "mineflayer": "^4.23.0",
-    "bedrock-protocol": "^1.26.0"
+    "bedrock-protocol": "^3.57.0"
   }
 }
